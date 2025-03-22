@@ -59,7 +59,7 @@
         {
             "name": "a_dance_of_fire_and_ice",
             "fName": "A Dance of Fire and Ice",
-            "description": "A fun game where you have to slice fruit and avoid bombs for points.",
+            "description": "A fun rhythm game where you have to make it through a course by clicking at the right time.",
             "image": "/assets/images/game_covers/fire_and_ice.jpg",
             "online": true,
             "links": [
