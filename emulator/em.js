@@ -90,7 +90,7 @@ async function createSelect() {
 
     // Create optgroups for each category
     Object.keys(romsJSON).forEach((category) => {
-        if(category === "dos") return;
+        if(cetegory === "dos") return;
         const group = document.createElement('optgroup');
         group.label = formatCategoryName(category);
         allGroups[category] = group;

@@ -7,11 +7,10 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin-bottom: 300px;
 }
 h1 {
     text-align: center;
-    color: #111;
+    color: #333;
     padding: 20px 0;
     background-color: #fff;
     margin: 0;
@@ -28,7 +27,6 @@ h1, h2 {
     padding: 10px;
     border: 1px solid #ccc;
     font-size: 16px;
-    margin-bottom: 20px;
 }
 #searchInput:focus {
     outline: none;
@@ -39,10 +37,9 @@ ul {
     padding: 0;
 }
 li {
+    margin: 5px 0;
     display: flex;
-    padding: 3px;
     justify-content: space-between;
-    align-items: center;
     flex-direction: row;
     border-bottom: 1px solid #ccc;
 }
@@ -88,46 +85,4 @@ div.container {
     text-align: center;
     padding: 20px;
     margin: 20px 0;
-}
-
-body.dark {
-    background-color: #111;
-    color: #fff;
-}
-body.dark h1 {
-    background-color: #111;
-    color: #fff;
-}
-body.dark h2 {
-    color: #f0f0f0;
-}
-body.dark #searchInput {
-    background-color: #111;
-    color: #fff;
-    border: 1px solid #eee;
-}
-body.dark li {
-    border-bottom: none;
-}
-body.dark li div.links a {
-    color: #f0f0f0;
-}
-body.dark .determiner li:nth-child(odd) {
-    background-color: #222;
-    border-radius: 3px;
-}
-body.dark a {
-    color: #f0f0f0;
-}
-body.dark a:hover {
-    color: #fff;
-}
-body.dark a:visited {
-    color: #f0f0f0;
-}
-body.dark .error {
-    color: #f0f0f0;
-}
-body.dark .loading {
-    color: #f0f0f0;
 }

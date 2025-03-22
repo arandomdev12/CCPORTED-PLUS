@@ -31,17 +31,10 @@ class StateSyncUtility {
 
         return new Response(decompressed).text().then(JSON.parse);
     }
-    // Decompress data from Readalbe stream
-    async decompressData(uint8array) {
-        const stream = new Blob([uint8array]).stream()
-        if (!this.compressionEnabled) {
-            const text = await new Response(stream).text();
-            return JSON.parse(text);
-        }
-        const decompressed = stream.pipeThrough(new DecompressionStream('gzip'));
-        return new Response(decompressed).text().then(JSON.parse);
+    // Decompress data from Blob
+    async decompressData(compressed) {
+        const stream = compressed.stream();
 
-        /*
         if (!this.compressionEnabled) {
             const text = await new Response(stream).text();
             return JSON.parse(text);
@@ -49,17 +42,15 @@ class StateSyncUtility {
 
         const decompressed = stream.pipeThrough(new DecompressionStream('gzip'));
         return new Response(decompressed).text().then(JSON.parse);
-        */
     }
 
     // Optimized localStorage data collection
     getLocalStorageData() {
         log(`[CCPorted State Manager] Getting local storage data.... (length: ${localStorage.globalLength})`)
         const data = {};
-        const blackList = ['[ns_ccported]_ccStateLastSave', '[ns_ccported]_accessToken', '[ns_ccported]_idToken', '[ns_ccported]_refreshToken'];
         for (let i = 0; i < localStorage.globalLength; i++) {
             const key = localStorage.key(i, true);
-            if (blackList.includes(key)) continue;
+            if(key === 'ccStateLastSave') continue;
             data[key] = localStorage.getItem(key);
         }
         return data;
@@ -183,12 +174,12 @@ class StateSyncUtility {
     async importIndexedDBState(backupData) {
         log(`[CCPorted State Manager] Starting IndexedDB import...`);
         log(`[CCPorted State Manager] Found ${Object.keys(backupData).length} databases to import`);
-
+    
         // Delete existing databases first to avoid conflicts
         const existingDbs = await window.indexedDB.databases();
         log(`[CCPorted State Manager] Cleaning up ${existingDbs.length} existing databases...`);
-
-        await Promise.all(existingDbs.map(dbInfo =>
+        
+        await Promise.all(existingDbs.map(dbInfo => 
             new Promise((resolve, reject) => {
                 log(`[CCPorted State Manager] Deleting existing database: ${dbInfo.name}`);
                 const request = window.indexedDB.deleteDatabase(dbInfo.name);
@@ -202,24 +193,24 @@ class StateSyncUtility {
                 };
             })
         ));
-
+    
         // Import each database
         await Promise.all(Object.entries(backupData).map(async ([dbName, dbData]) => {
             log(`[CCPorted State Manager] Creating database: ${dbName} (version ${dbData.version})`);
-
+            
             // Create database and object stores
             const db = await new Promise((resolve, reject) => {
                 const request = indexedDB.open(dbName, dbData.version);
-
+                
                 request.onerror = () => {
                     log(`[CCPorted State Manager] ERROR: Failed to create database ${dbName}:`, request.error);
                     reject(request.error);
                 };
-
+                
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
                     log(`[CCPorted State Manager] Setting up schema for database: ${dbName}`);
-
+                    
                     // Create object stores with their schemas
                     Object.entries(dbData.schema).forEach(([storeName, schema]) => {
                         log(`[CCPorted State Manager] Creating object store: ${storeName}`);
@@ -232,9 +223,9 @@ class StateSyncUtility {
                             storeOptions.autoIncrement = schema.autoIncrement;
                             log(`[CCPorted State Manager] - Using autoIncrement: ${schema.autoIncrement}`);
                         }
-
+                        
                         const store = db.createObjectStore(storeName, storeOptions);
-
+                        
                         // Create indexes
                         if (schema.indexes) {
                             schema.indexes.forEach(index => {
@@ -247,45 +238,45 @@ class StateSyncUtility {
                         }
                     });
                 };
-
+                
                 request.onsuccess = () => {
                     log(`[CCPorted State Manager] Successfully created database: ${dbName}`);
                     resolve(request.result);
                 };
             });
-
+    
             // Import data for each store
             const stores = Object.keys(dbData.schema);
             log(`[CCPorted State Manager] Importing data for ${stores.length} stores in ${dbName}`);
-
+    
             await Promise.all(stores.map(async storeName => {
                 const storeData = dbData.stores[storeName];
                 const storeKeys = dbData.stores[`${storeName}_keys`];
-
+                
                 if (!storeData || storeData.length === 0) {
                     log(`[CCPorted State Manager] No data to import for store: ${storeName}`);
                     return;
                 }
-
+    
                 log(`[CCPorted State Manager] Importing ${storeData.length} records into store: ${storeName}`);
                 const transaction = db.transaction(storeName, 'readwrite');
                 const store = transaction.objectStore(storeName);
-
+    
                 // Import all records
                 let successCount = 0;
                 let errorCount = 0;
-
+    
                 await Promise.all(storeData.map(async (item, index) => {
                     return new Promise((resolve, reject) => {
                         let request;
-
+                        
                         // If we have explicit keys and the store doesn't use keyPath
                         if (!store.keyPath && storeKeys && storeKeys[index]) {
                             request = store.add(item, storeKeys[index]);
                         } else {
                             request = store.add(item);
                         }
-
+                        
                         request.onerror = () => {
                             errorCount++;
                             log(`[CCPorted State Manager] ERROR: Failed to import record ${index} in ${storeName}:`, request.error);
@@ -301,7 +292,7 @@ class StateSyncUtility {
                         };
                     });
                 }));
-
+    
                 // Wait for transaction to complete
                 await new Promise((resolve, reject) => {
                     transaction.oncomplete = () => {
@@ -316,11 +307,11 @@ class StateSyncUtility {
                     };
                 });
             }));
-
+    
             log(`[CCPorted State Manager] Closing database: ${dbName}`);
             db.close();
         }));
-
+        
         log(`[CCPorted State Manager] IndexedDB import completed successfully`);
     }
 
@@ -333,7 +324,7 @@ class StateSyncUtility {
             } else {
                 state = compressedState;
             }
-            log('[329]', state);
+            log('[329]',state);
             return {
                 success: true,
                 timestamp: state.timestamp,
@@ -372,17 +363,14 @@ class StateSyncUtility {
             this.forceSync();
         }, interval);
     }
-}
+}   
 class GameStateSync {
-    constructor(userId) {
+    constructor(userId, client) {
         this.userId = userId;
+        this.client = client;
         this.syncUtil = new StateSyncUtility();
-        this.client = new window.ccPorted.AWS.S3({
-            region: 'us-west-2'
-        });
-        this.stateFileName = `save_state.state`;
+        this.stateFileName = `${userId}_save_state.state`;
         this.lastSync = 0;
-        this.initialize();
     }
 
     async initialize() {
@@ -393,7 +381,7 @@ class GameStateSync {
     }
     async saveState(state, timestamp) {
         this.lastSync = timestamp;
-        localStorage.setItem('[ns_ccported]_ccStateLastSave', timestamp, true);
+        localStorage.setItem('ccStateLastSave', timestamp, true);
         var notification = window.ccPorted.autoSaveNotification;
         await this.saveToServer(state, timestamp);
         if (notification.getAttribute('data-creation-time') + notification.getAttribute('data-min-visible-time') < Date.now()) {
@@ -406,14 +394,24 @@ class GameStateSync {
     }
 
     async saveToServer(stateBlob, timestamp) {
+        console.log(stateBlob)
         try {
-            await window.ccPorted.uploadFile(stateBlob, this.stateFileName, { ContentType: "application/octet-stream" });
-            log('[CCPorted State Manager] State uploaded successfully');
-            await window.ccPorted.updateUser({
-                'custom:last_save_state': timestamp.toString()
-            })
-            log('[CCPorted State Manager] User attributes updated successfully');
+            const { error } = await this.client
+                .storage
+                .from('save_states')
+                .upload(this.stateFileName, stateBlob, {
+                    upsert: true,
+                    contentType: 'application/octet-stream'
+                });
+            const { error: error2 } = await this.client
+                .from('u_profiles')
+                .update({ last_save_state: timestamp })
+                .eq('id', this.userId);
 
+            if (error) {
+                log('[CCPorted State Manager] Error saving state: ' + error);
+                throw error;
+            }
         } catch (error) {
             log('[CCPorted State Manager] Error saving state: ' + error);
             throw error;
@@ -423,41 +421,101 @@ class GameStateSync {
     async loadFromServer() {
         try {
             log("Starting load from server")
-            const lastSave = window.ccPorted.user.attributes["custom:last_save_state"] || 0;
-            const params = {
-                Bucket: 'ccporteduserobjects',
-                Key: `${window.ccPorted.user.sub}/${this.stateFileName}`,
+            const { data: profile, error: profileError } = await this.client
+                .from('u_profiles')
+                .select('last_save_state')
+                .eq('id', this.userId)
+                .single();
+            if (profileError) {
+                log('[CCPorted State Manager] Error loading state: ' + profileError);
+                throw profileError;
             }
-            const data = await this.client.getObject(params).promise();
+            const lastSave = profile.last_save_state || 0;
+            if (!profile.last_save_state) {
+                log('[CCPorted State Manager] No saved state found, checking old save method');
+                // they may be using the old save method
+                const { data: oldSave, error: oldSaveError } = await this.client
+                    .from('save_states')
+                    .select('*')
+                    .eq('user_id', this.userId);
+                if (oldSaveError) {
+                    log('[CCPorted State Manager] Error loading state: ' + oldSaveError);
+                    throw oldSaveError;
+                }
+                if (oldSave.length === 0) {
+                    log('[CCPorted State Manager] No saved state found (old or new)');
+                    return;
+                }
+                log('[CCPorted State Manager] Old save found');
+                // old data is of type text
+                const decomp = await this.syncUtil.decompressOldData(oldSave[0].state);
+                const timestamp = decomp.timestamp;
+                log('[CCPorted State Manager] [old] Last save timestamp: ' + timestamp);
+                const currentSave = localStorage.getItem('ccStateLastSave');
+                log('[CCPorted State Manager] [old] Current save timestamp: ' + currentSave);
+                if (!currentSave || timestamp > currentSave) {
+                    log('[CCPorted State Manager] Game state has been updated');
+                    log("[CCPorted State Manager] Importing state....");
+                    const result = await this.syncUtil.importState(decomp, true);
+                    if (result.success) {
+                        localStorage.setItem('ccStateLastSave', timestamp, true);
+                        log('[CCPorted State Manager] State loaded successfully');
+                        await result.import();
+                        location.reload();
+                    } else {
+                        log('[CCPorted State Manager] [310] Error loading state: ' + result.error);
+                        throw result.error;
+                    }
+                } else {
+                    log('[CCPorted State Manager] Transitioning to new save method');
+                    const compressed = await this.syncUtil.compressData(decomp);
+                    await this.saveToServer(compressed, timestamp);
+                    log('[CCPorted State Manager] Old save transitioned');
+                    log('[CCPorted State Manager] Deleting old save');
+                    await this.client
+                        .from('save_states')
+                        .delete()
+                        .eq('user_id', this.userId);
+                    log('[CCPorted State Manager] Old save deleted');
+                    return;
+                }
+            }
+            const { data, error } = await this.client
+                .storage
+                .from('save_states')
+                .download(this.stateFileName + '?timestampbuster=' + lastSave);
+            if (error) {
+                if (error.message.includes('Object not found')) {
+                    log('[CCPorted State Manager] No saved state found');
+                    return;
+                }
+                throw error;
+            }
             log('[CCPorted State Manager] State downloaded successfully');
-            const decomp = await this.syncUtil.decompressData(data.Body);
+            const decomp = await this.syncUtil.decompressData(data);
             log(`[CCPorted State Manager] State decompressed successfully`);
             const timestamp = decomp.timestamp;
             log('[CCPorted State Manager] Last save timestamp: ' + timestamp);
-            const currentSave = localStorage.getItem('[ns_ccported]_ccStateLastSave');
+            const currentSave = localStorage.getItem('ccStateLastSave');
             log('[CCPorted State Manager] Current save timestamp: ' + currentSave);
             if (!currentSave || timestamp > currentSave) {
                 log('[CCPorted State Manager] Game state has been updated');
-                localStorage.setItem('[ns_ccported]_ccStateLastSave', timestamp, true);
+                localStorage.setItem('ccStateLastSave', timestamp, true);
                 log('[CCPorted State Manager] Importing state....');
                 const result = await this.syncUtil.importState(decomp, true);
                 if (result.success) {
                     log('[CCPorted State Manager] State loaded successfully');
                     await result.import();
-                    localStorage.setItem('[ns_ccported]_ccStateLastSave', timestamp, true);
+                    localStorage.setItem('ccStateLastSave', timestamp, true);
                     location.reload();
                 } else {
                     log('[CCPorted State Manager] [310] Error loading state: ' + result.error);
                     throw result.error;
                 }
-            } else {
+            }else{
                 log('[CCPorted State Manager] Game state is up to date');
             }
         } catch (error) {
-            if (error.code?.includes('NoSuchKey')) {
-                log('[CCPorted State Manager] No save state found');
-                return;
-            }
             log('[CCPorted State Manager] [315] Error loading state: ' + error);
             throw error;
         }

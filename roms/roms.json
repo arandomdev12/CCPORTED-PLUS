@@ -7,10 +7,6 @@
     [
       "Space Invaders (USA).zip",
       "Space Invaders (USA)"
-    ],
-    [
-      "dig_dug_(1983)_(Atari)_-_test_rOM",
-      "Dig Dug (1983) (Atari) - Test ROM"
     ]
   ],
   "dos": [
@@ -151,10 +147,6 @@
       "Legend of Zelda, The - The Minish Cap (Europe) (En,Fr,De,Es,It)"
     ],
     [
-      "Mario Kart - Super Circuit (Europe).zip",
-      "Mario Kart - Super Circuit (Europe)"
-    ],
-    [
       "Metroid - Zero Mission (Japan).zip",
       "Metroid - Zero Mission (Japan)"
     ],
@@ -227,73 +219,17 @@
       "Ultimate Spider-Man (USA)"
     ],
     [
-      "castlevania_(Europe)",
-      "Castlevania (Europe)"
-    ],
-    [
-      "final_fantasy_iV_advance_(USA)",
-      "Final Fantasy IV Advance (USA)"
-    ],
-    [
-      "final_fantasy_vI_advance_(USA)",
-      "Final Fantasy VI Advance (USA)"
-    ],
-    [
-      "final_fantasy_v_advance_(USA)",
-      "Final Fantasy V Advance (USA)"
-    ],
-    [
-      "mario_and_luigi_superstar_saga_(U)",
-      "Mario And Luigi Superstar Saga (U)"
-    ],
-    [
       "metroid_fusion.gba.zip",
       "Metroid Fusion"
-    ],
-    [
-      "mother_3_(English_translation)_(HQ_sound)",
-      "Mother 3 (English Translation) (HQ Sound)"
     ]
   ],
   "n64": [
     [
-      "banjo-Kazooie_(USA)_(Rev_1)",
-      "Banjo-Kazooie (USA) (Rev 1)"
-    ],
-    [
-      "banjo-Tooie_(USA)",
-      "Banjo-Tooie (USA)"
-    ],
-    [
-      "kirby_64_-_the_crystal_shards_(USA)",
-      "Kirby 64 - The Crystal Shards (USA)"
-    ],
-    [
       "legend_of_zelda_the_ocarina_of_time.n64.zip",
       "Legend Of Zelda The Ocarina Of Time"
-    ],
-    [
-      "paper_mario_(USA)",
-      "Paper Mario (USA)"
-    ],
-    [
-      "super_mario_64_(USA)",
-      "Super Mario 64 (USA)"
-    ],
-    [
-      "the_legend_of_zelda_-_majora's_mask_(USA)",
-      "The Legend Of Zelda - Majora's Mask (USA)"
     ]
   ],
   "nds": [
-    [
-      "mario_and_luigi_-_bowser's_inside_story_(USA)_(En,Fr,Es)",
-      "Mario And Luigi - Bowser's Inside Story (USA) (En,Fr,Es)"
-    ],
-    [
-      "mario_and_luigi_-_partners_in_time_(USA)",
-      "Mario And Luigi - Partners In Time (USA)"
-    ],
     [
       "pokemon_HeartGold_version.nds.zip",
       "Pokemon HeartGold Version"
@@ -379,10 +315,6 @@
       "2002 FIFA World Cup"
     ],
     [
-      "castlevania_-_symphony_of_the_night_(USA)",
-      "Castlevania - Symphony Of The Night (USA)"
-    ],
-    [
       "mortal_kombat_3.ps.zip",
       "Mortal Kombat 3"
     ],
@@ -407,40 +339,6 @@
       "Moto Racer World Tour"
     ]
   ],
-  "segaMD": [
-    [
-      "ecco_-_the_tides_of_time_(USA)",
-      "Ecco - The Tides Of Time (USA)"
-    ],
-    [
-      "ecco_the_dolphin_(USA)",
-      "Ecco The Dolphin (USA)"
-    ],
-    [
-      "ristar_(USA)",
-      "Ristar (USA)"
-    ],
-    [
-      "shining_force_(USA)",
-      "Shining Force (USA)"
-    ],
-    [
-      "shining_force_iI_(USA)",
-      "Shining Force II (USA)"
-    ],
-    [
-      "sonic_the_hedgehog_(USA)",
-      "Sonic The Hedgehog (USA)"
-    ],
-    [
-      "sonic_the_hedgehog_2_(USA)",
-      "Sonic The Hedgehog 2 (USA)"
-    ],
-    [
-      "sonic_the_hedgehog_3_(USA)",
-      "Sonic The Hedgehog 3 (USA)"
-    ]
-  ],
   "snes": [
     [
       "Kirby Super Star (USA).zip",
@@ -457,26 +355,6 @@
     [
       "Legend of Zelda, The - A Link to the Past (Europe).zip",
       "Legend of Zelda, The - A Link to the Past (Europe)"
-    ],
-    [
-      "Super Mario Kart (Europe).zip",
-      "Super Mario Kart (Europe)"
-    ],
-    [
-      "earthBound_(USA)",
-      "EarthBound (USA)"
-    ],
-    [
-      "super_mario_world_(USA)",
-      "Super Mario World (USA)"
-    ],
-    [
-      "super_mario_world_2_-_yoshi's_island_(USA)_(Rev_1)",
-      "Super Mario World 2 - Yoshi's Island (USA) (Rev 1)"
-    ],
-    [
-      "super_metroid_(Europe)_(En,Fr,De)",
-      "Super Metroid (Europe) (En,Fr,De)"
     ]
   ],
   "vb": [

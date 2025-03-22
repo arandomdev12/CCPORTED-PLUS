@@ -2,26 +2,21 @@
     0% {
         width: 100%;
     }
-
     100% {
         width: 0%;
     }
 }
-
 @keyframes fade {
     0% {
         opacity: 1;
     }
-
-    100% {
+    100%{
         opacity: 0;
     }
 }
-
 .cc.link-active {
     text-decoration: underline;
 }
-
 .cc.popup {
     position: fixed;
     top: 0;
@@ -34,7 +29,7 @@
     color: white;
     justify-content: center;
     align-items: center;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .cc.popup-content {
@@ -81,7 +76,6 @@
 .cc.popup-buttons button:hover {
     transition: 500ms;
 }
-
 button.cc {
     width: 100%;
     padding: 10px;
@@ -94,7 +88,6 @@ button.cc {
 button.cc:hover {
     background-color: #45a049;
 }
-
 input[type="email"].cc,
 input[type="password"].cc,
 input[type="text"].cc {
@@ -107,7 +100,7 @@ input[type="text"].cc {
     box-sizing: border-box;
 }
 
-.cc.channel-row {
+.cc.channel-row{
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -115,66 +108,12 @@ input[type="text"].cc {
     margin-bottom: 10px;
     border-bottom: 1px solid #7d7d7d;
 }
-
-.cc.channels-list-mute {
+.cc.channels-list-mute{
     display: flex;
     flex-direction: column;
     width: 100%;
 }
-
-.cc.mute-channel {
+.cc.mute-channel{
     cursor: pointer;
 }
 
-@import url("https://fonts.googleapis.com/css2?family=Montserrat&display=swap");
-
-.cc.lightDarkToggle {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 9999;
-}
-
-.cc.checkbox {
-    opacity: 0;
-    box-sizing: border-box;
-    position: absolute;
-}
-
-.cc.checkbox-label {
-    background-color: #363636;
-    width: 60px;
-    height: 30px;
-    border-radius: 50px;
-    position: relative;
-    padding: 5px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-sizing: border-box;
-}
-
-.cc.fa-moon {
-    color: #f1c40f;
-}
-
-.cc.fa-sun {
-    color: #f39c12;
-}
-
-.cc.checkbox-label .cc.ball {
-    background-color: #fff;
-    width: 26px;
-    height: 26px;
-    position: absolute;
-    left: 2px;
-    top: 2px;
-    border-radius: 50%;
-    transition: transform 0.2s linear;
-    box-sizing: border-box;
-}
-
-.cc.checkbox:checked+.cc.checkbox-label .cc.ball {
-    transform: translateX(30px);
-}

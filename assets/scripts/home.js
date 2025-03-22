@@ -12,7 +12,6 @@ try {
     const header = document.querySelector('header');
     const toggleBtn = document.querySelector('.toggle-btn');
 
-    window.server = null;
     const sortStates = [
         [() => {
             sortCardsByClicks((cards) => {
@@ -63,76 +62,18 @@ try {
             })
         }, "Random"]
     ]
+    let showingAds = true;
+    let needToLoadAds = false;
     let lastInputTime = Date.now();
     let query = new URLSearchParams(window.location.search);
     let cachedRomsJSON = null;
+    let cachedHotOrder = [];
     let sortState = 0;
     let cardsCache = [];
 
     searchInput.value = "";
     window.gameRQPopupOpen = false;
     document.querySelector(".cards").classList.add("loading");
-
-
-
-    async function importGames() {
-        log("Importing games... waiting for AWS")
-        await window.ccPorted.userPromise;
-        log("AWS Loaded, waiting for query");
-        const dynamodb = window.ccPorted.documentClient;
-        const games = [];
-        const params = {
-            TableName: 'games_list',
-            ProjectionExpression: 'gameID, clicks, description, fName, tags, thumbPath',
-        };
-
-        try {
-            const data = await dynamodb.scan(params).promise();
-            log(`Query fullfiled, found ${data.Items.length} games.`);
-            data.Items.forEach(item => {
-                games.push(item);
-            });
-        } catch (error) {
-            console.error('Error loading games:', error);
-            document.querySelector('.container').innerHTML = `
-                <div class="error">
-                    Error loading games. Please try again later.
-                    <br>
-                    <span style = "color: red">${error.message}</span>
-                    <br>
-                    <p>Please contact us at <a href = "mailto:sojscoder@gmail.com">sojscoder@gmail.com</a> if this issue persists.</p>
-                </div>
-            `;
-        }
-        return { games }
-    }
-    async function adsEnabled() {
-        let adBlockEnabled = false
-        const googleAdUrl = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
-        try {
-            await fetch(new Request(googleAdUrl)).catch(_ => adBlockEnabled = true)
-        } catch (e) {
-            adBlockEnabled = true
-        } finally {
-            if (!window.ccPorted.aHosts) {
-                const res = await fetch("/ahosts.txt");
-                const text = await res.text();
-                const hosts = text.split('\n');
-                window.ccPorted.aHosts = hosts.map(h => h.trim());
-                if (window.ccPorted.aHosts.includes(window.location.hostname)) {
-                    return !adBlockEnabled;
-                } else {
-                    return false;
-                }
-            } else {
-                if (window.ccPorted.aHosts.includes(window.location.hostname)) {
-                    return !adBlockEnabled;
-                } else {
-                    return false;
-                }
-            }
-        }
-    }
     async function importJSON(path) {
         let url;
         if (path.startsWith("/") && !path.startsWith("//")) {
@@ -156,31 +97,22 @@ try {
         return res.json() || {};
     }
     async function testOpenServers() {
-        let server = null;
-        let serverIndex = 0;
-        const serverList = await fetch('/servers.txt');
-        const serversText = await serverList.text();
-        const servers = serversText.split('\n');
-        while (!server) {
-            const toAttemptIndex = Math.floor(Math.random() * servers.length);
-            const toAttempt = servers[toAttemptIndex].split(",")[0];
-            try {
-                console.log(`[CCPORTED: Attempting server ${toAttempt} (${toAttemptIndex})`);
-                const res = await fetch(`https://${toAttempt}/blocked_res.txt`);
-                if (res.ok) {
-                    const text = await res.text();
-                    if (text.indexOf("===NOT_BLOCKED===") !== -1) {
-                        server = toAttempt;
-                        serverIndex = toAttemptIndex;
-                    }
-                }
-            } catch (e) {
-                console.log(`[CCPORTED: Server ${toAttempt} failed: ${e}`);
+        const servers = ["https://dahljrdecyiwfjgklnvz.supabase.co"];
+        const responses = await Promise.all(servers.map(server => {
+            fetch(server)
+        }));
+        const json = await Promise.all(responses.map(response => response.json()));
+        // expexted response should have "error: requested path is invalid"
+        const valid = null;
+        json.forEach((serverRes, i) => {
+            if (serverRes["error"].includes("requested path is invalid")) {
+                valid = servers[i];
+                return;
             }
-        }
-        return [server.trim(), serverIndex];
+        });
+        return valid;
     }
-    async function baseRender(gamesJson) {
+    async function baseRender() {
         try {
             log("Attempting base render");
             log("Cards rendered: " + window.ccPorted.cardsRendered)
@@ -191,10 +123,11 @@ try {
             window.ccPorted.baseRendering = true;
 
             // createNotif({
-            //     message: "Something is blocking the connection to the server. You will not be able to login, which means that high scores will not be saved and your games will not save across domains and devices.",
-            //     cta: false,
-            //     autoClose: 5
-            // });
+                // message: "Something is blocking the connection to the server. You will not be able to login, which means that high scores will not be saved and your games will not save across domains and devices.",
+                // cta: false,
+                // autoClose: 7
+        // });
+            const gamesJson = await importJSON("/games.json");
             const { games } = gamesJson;
             log(`Games ${games.length} found.`);
             games.forEach(game => {
@@ -207,13 +140,23 @@ try {
                     if (e.target.tagName == "SPAN" || e.target.tagName == "A") {
                         if (e.target.tagName == "A") {
                             e.preventDefault();
-                            incrementClicks(id);
-                            window.open(e.target.href, '_blank');
+                            const protocol = window.location.protocol;
+                            const hostname = window.location.hostname;
+                            const fullURL = e.target.href;
+                            let x = fullURL.replace("ccported.github.io", hostname);
+                            console.log(protocol);
+                            x = x.replace("https://", protocol + "//");
+                            window.open(x, '_blank');
                         }
                         return;
                     }
-                    incrementClicks(id);
-                    window.open(links[0].href, '_blank');
+                    const protocol = window.location.protocol;
+                    const hostname = window.location.hostname;
+                    const fullURL = links[0].href;
+                    let x = fullURL.replace("ccported.github.io", hostname + "//");
+                    console.log(protocol);
+                    x = x.replace("https://", protocol);
+                    window.open(links[0].href.replace("ccported.github.io", window.location.hostname), '_blank');
                 });
                 checkSeenGame(id, card);
                 markGameSeen(id);
@@ -239,10 +182,10 @@ try {
                 if (unseenRoms.length > 0) {
                     if (unseenRoms.length == 1) {
                         document.getElementById("romLinks").innerHTML += ` (${unseenRoms[0][0]}/${unseenRoms[0][1]} New!)`;
-                    } else {
+                    } else {                    document.getElementById("romLinks").innerHTML += ` (${unseenRoms.length} New!)`;
                         document.getElementById("romLinks").innerHTML += ` (${unseenRoms.length} New!)`;
                     }
-                }
+                }    
             } catch (e) {
                 log("Failed to load ROMs: " + e);
             }
@@ -264,92 +207,64 @@ try {
             log("Failed to import manually" + "\n" + e.stack);
         }
     }
-    async function checkForSwitchToAHost() {
-        try {
-            return;
-            log("Checking switch to aHost");
-            if (!window.ccPorted.aHosts) {
-                const res = await fetch("/ahosts.txt");
-                const text = await res.text();
-                const hosts = text.split('\n');
-                window.ccPorted.aHosts = hosts.map(h => h.trim());
-            }
-            if (window.ccPorted.aHosts.includes(window.location.hostname)) {
-                log("Already on aHost");
-                return;
-            };
-            for (const host of window.ccPorted.aHosts) {
-                try {
-                    log(`Checking ${host}`);
-                    const blockedRes = await fetch(`https://${host}/blocked_res.txt`);
-                    if (blockedRes.ok) {
-                        const text = await blockedRes.text();
-                        if (text.indexOf("===NOT_BLOCKED===") !== -1) {
-                            window.location.href = `https://${host}/`
-                        }else{
-                            log(`${host} failed (wrong res)`);
-                        }
-                    }else{
-                        log(`${host} failed (res not 200)`);
-                    }
-                } catch (e) {
-                    log(`${host} failed (errored)!`)
-                }
-            }
-        } catch (e) {
-            log("Error checking for AHost switch")
-        }
-    }
     async function init() {
         log("Initializing");
-        await checkForSwitchToAHost();
         window.ccPorted = window.ccPorted || {};
         window.ccPorted.cardsRendered = false;
-        window.ccPorted.adsEnabled = await adsEnabled();
-        if (window.ccPorted.adsEnabled && window.innerWidth > 800) {
-            // add margin for the ads
-            document.querySelector(".cards").style.marginRight = "300px";
-            document.querySelector(".search").style.marginRight = "300px";
-        }
-        if (!window.ccPorted.adsEnabled) {
-            hideAds();
-        }
-        const [chosenServer, index] = await testOpenServers();
-        window.ccPorted.gameServer = {};
-        window.ccPorted.gameServer.server = chosenServer;
-        window.ccPorted.gameServer.index = index;
-        // createPopup({
-        //     title: 'Hiring!',
-        //     message: "We are hiring! We are looking for interns to help add games and manage the community.",
-        //     cta: {
-        //         text: "Apply",
-        //         link: "https://forms.gle/kWJRXuYN93unLkZRA"
-        //     }
-        // });
-        const gamesJson = await importGames();
         setTimeout(() => {
-            baseRender(gamesJson);
+            baseRender();
         }, 3000);
+        
+        createPopup({
+            title: 'Hiring!',
+            message: "We are hiring! We are looking for interns to help add games!",
+            cta: {
+                text: "Apply",
+                link: "https://forms.gle/KN7CCoY5UTUB4ELZ6"
+            }
+        });
+        const gamesJson = await importJSON("/games.json");
         const { games } = gamesJson;
         log(`Got ${games.length} games`);
+        let clicks;
+        try {
+            clicks = await getAllClicks();
+        } catch (e) {
+            log(e);
+            clicks = {};
+        }
         games.forEach(game => {
             const card = buildCard(game);
             const id = card.getAttribute('id');
             // get links
             const links = card.querySelectorAll('.card-content .card-links a');
             card.style.cursor = "pointer";
-            card.setAttribute('data-clicks', game.clicks || 0);
+            card.setAttribute('data-clicks', clicks[id] || 0);
             card.addEventListener('click', (e) => {
                 if (e.target.tagName == "SPAN" || e.target.tagName == "A") {
+                    // not the card, but an item for which something happens on the card
                     if (e.target.tagName == "A") {
                         e.preventDefault();
+                        // if it's a link, open it
                         incrementClicks(id);
-                        window.open(e.target.href, '_blank');
+                        const protocol = window.location.protocol;
+                        const hostname = window.location.hostname;
+                        const fullURL = e.target.href;
+                        let x = fullURL.replace("ccported.github.io", hostname);
+                        console.log(protocol);
+                        x = x.replace("https://", protocol + "//");
+                        window.open(e.target.href.replace("ccported.github.io", window.location.hostname), '_blank');
                     }
                     return;
                 }
                 incrementClicks(id);
-                window.open(links[0].href, '_blank');
+                const protocol = window.location.protocol;
+                const hostname = window.location.hostname;
+                const fullURL = links[0].href;
+                let x = fullURL.replace("ccported.github.io", hostname);
+                console.log(protocol);
+                x = x.replace("https://", protocol + "//");
+                window.open(x, '_blank');
             });
             checkSeenGame(id, card);
             markGameSeen(id);
@@ -397,24 +312,25 @@ try {
         }
         log("Home page loaded");
         window.ccPorted.baseRendering = false;
-        rerenderAds();
+        loadAds();
     }
     async function incrementClicks(gameID) {
         try {
             log(`Incrementing clicks for game ${gameID}`);
-            const params = {
-                TableName: 'games_list',
-                Key: {
-                    gameID: gameID
-                },
-                UpdateExpression: 'SET clicks = clicks + :inc',
-                ExpressionAttributeValues: {
-                    ':inc': 1
-                },
-                ReturnValues: 'UPDATED_NEW'
-            };
-            const data = await window.ccPorted.documentClient.update(params).promise();
-            log('Clicks incremented:', data.Attributes.clicks);
+            let { data: game_clicks, error } = await client
+                .from('game_clicks')
+                .select('clicks')
+                .eq('gameID', gameID);
+
+            if (error) {
+                log('Error getting game clicks:', error.message);
+                return;
+            }
+            const clicks = (game_clicks[0] || { clicks: 0 }).clicks + 1;
+            // upsert
+            let { data, error: upsertError } = await client
+                .from('game_clicks')
+                .upsert([{ gameID, clicks }]);
         } catch (e) {
             log(e);
         }
@@ -435,6 +351,29 @@ try {
         } catch (e) {
             log(e);
             return 0;
+        }
+    }
+    async function getAllClicks() {
+        try {
+            log(`Getting all game clicks`);
+            let { data: game_clicks, error } = await client
+                .from('game_clicks')
+                .select('gameID, clicks');
+
+            if (error) {
+                baseRender();
+                log('Error getting game clicks:', error.message);
+                return;
+            }
+            let obj = {};
+            game_clicks.forEach(game => {
+                obj[game.gameID] = game.clicks;
+            });
+            return obj;
+        } catch (e) {
+            log(e);
+            baseRender();
+            return {}
         }
     }
     function pickRandomCard() {
@@ -468,76 +407,78 @@ try {
         });
     }
     async function input(sortState = 0) {
-        hideAds();
-        // update query parameters
-        if (searchInput.value.length > 0) {
-            console.log("SEARCH LONG")
-            var url = new URL(window.location.href);
-            url.searchParams.set("q", searchInput.value);
-            window.history.pushState({}, '', url);
-            // if the input has content, add open it
-            openSearch();
-
-            var matching = cardsCache.map((card) => {
-                var score = 0;
-                feilds.forEach(feild => {
-                    var allFeilds = card.querySelectorAll(feild);
-                    for (var i = 0; i < allFeilds.length; i++) {
-                        var string = normalize(allFeilds[i].innerText);
-                        if (string.indexOf(normalize(searchInput.value)) !== -1) {
-                            score++;
-                        }
-                    }
-                })
-                return [score, card]
-            });
-            matching = matching.sort((a, b) => {
-                return b[0] - a[0]
-            });
-            matching = matching.filter((card) => {
-                if (card[0] == 0) return false;
-                cardsContainer.appendChild(card[1]);
-                return true;
-            });
-            lastInputTime = Date.now();
-            removeCards();
-            if (matching.length == 0) {
-                removeCards();
-                var results = await testRomSearch(searchInput.value);
-                if (results.length > 0) {
-                    var h3 = document.createElement("h3");
-                    h3.innerHTML = `Rom Results`
-                    var fullLibrary = document.createElement("p");
-                    fullLibrary.innerHTML = "<i style = 'font-weight:normal'>View the <a href = 'https://" + window.location.hostname + "/roms/'>full library</a></i>";
-
-                    var div = document.createElement("div");
-                    div.appendChild(h3)
-                    div.appendChild(fullLibrary);
-                    for (const result of results) {
-                        var p = document.createElement("p");
-                        var [url, name, platform] = result;
-                        p.innerHTML = `<a href = "/emulator/?core=${platform}&rom=${url}">${name}</a>`;
-                        div.appendChild(p)
-                    }
-                    document.getElementById("check-roms").innerHTML = "";
-                    document.getElementById("check-roms").appendChild(div);
-                }
-            } else {
-                matching.forEach((card) => {
-                    cardsContainer.appendChild(card[1]);
-                });
-                document.getElementById("check-roms").innerHTML = "";
-            }
-        } else if (searchInput.value.length <= 0) {
+        log(`Searching for ${searchInput.value}`);
+        if (searchInput.value.length <= 0) {
+            setSort(sortState);
             var url = new URL(window.location);
-            console.log("SEARCH SHORT")
             url.searchParams.delete("q");
             window.history.pushState({}, '', url);
+            return;
+        }
+        // update query parameters
+        var url = new URL(window.location.href);
+        url.searchParams.set("q", searchInput.value);
+        window.history.pushState({}, '', url);
+        // if the input has content, add open it
+        openSearch();
+
+        // add click event to clear the input
+        var matching = cardsCache.map((card) => {
+            var score = 0;
+            feilds.forEach(feild => {
+                var allFeilds = card.querySelectorAll(feild);
+                for (var i = 0; i < allFeilds.length; i++) {
+                    var string = normalize(allFeilds[i].innerText);
+                    if (string.indexOf(normalize(searchInput.value)) !== -1) {
+                        score++;
+                    }
+                }
+            })
+            return [score, card]
+        });
+        matching = matching.sort((a, b) => {
+            return b[0] - a[0]
+        });
+        removeCards();
+        matching = matching.filter((card) => {
+            if (card[0] == 0) return false;
+            cardsContainer.appendChild(card[1]);
+            return true;
+        });
+        shuffleAds();
+        lastInputTime = Date.now();
+        if (matching.length == 0) {
             removeCards();
-            cardsCache.forEach(card => {
-                cardsContainer.appendChild(card);
-            });
-            setSort(sortState);
+            hideAds();
+            var results = await testRomSearch(searchInput.value);
+            if (results.length > 0) {
+                var h3 = document.createElement("h3");
+                h3.innerHTML = `Rom Results`
+                var fullLibrary = document.createElement("p");
+                fullLibrary.innerHTML = "<i style = 'font-weight:normal'>View the <a href = 'https://" + window.location.hostname + "/roms/'>full library</a></i>";
+
+                var div = document.createElement("div");
+                div.appendChild(h3)
+                div.appendChild(fullLibrary);
+                for (const result of results) {
+                    var p = document.createElement("p");
+                    var [url, name, platform] = result;
+                    p.innerHTML = `<a href = "/emulator/?core=${platform}&rom=${url}">${name}</a>`;
+                    div.appendChild(p)
+                }
+                document.getElementById("check-roms").innerHTML = "";
+                document.getElementById("check-roms").appendChild(div);
+            } else {
+                setTimeout(() => {
+                    if (Date.now() - lastInputTime >= failedInputCheckLag) {
+                        client.from("failed_search")
+                            .insert([{ search_content: searchInput.value }])
+                    }
+                }, failedInputCheckLag);
+            }
+        } else {
+            showAds();
+            document.getElementById("check-roms").innerHTML = "";
         }
     }
     async function testRomSearch(query) {
@@ -587,15 +528,28 @@ try {
             log('Error adding game request:', error.message);
         }
     };
+    function showAds() {
+        log("Showing ads");
+        showingAds = true;
+        if (needToLoadAds) {
+            loadAds();
+        } else {
+            const ads = document.querySelectorAll(".tad");
+            ads.forEach(ad => {
+                ad.style.display = "flex";
+            });
+        }
+    }
     function hideAds() {
         log("Hiding ads");
         showingAds = false;
-        const ads = document.querySelectorAll(".inxxx");
+        const ads = document.querySelectorAll(".tad");
         ads.forEach(ad => {
-            ad.remove();
+            ad.style.display = "none";
         });
     }
     function openSearch() {
+        log("Search box opened");
         searchInput.type = "text";
         searchInput.focus();
     }
@@ -683,7 +637,7 @@ try {
         sortDirectionText.innerHTML = sortStates[sortState][1];
     }
     function shuffleAds() {
-        const ads = document.querySelectorAll(".inxxx");
+        const ads = document.querySelectorAll(".tad");
         ads.forEach(ad => {
             ad.remove();
             var randomCard = document.querySelector(".cards").children[Math.floor(Math.random() * document.querySelector(".cards").children.length)];
@@ -739,9 +693,7 @@ try {
         closeButton.onclick = () => popup.remove();
         const linkRow = document.createElement('div');
         linkRow.style.display = 'flex';
-        linkRow.style.alignItems = 'right';
-        linkRow.style.gap = '10px';
-        // linkRow.style.justifyContent = 'space';
+        linkRow.style.justifyContent = 'space-between';
         if (popupData.cta) {
             linkRow.appendChild(link);
         }
@@ -753,6 +705,7 @@ try {
         document.body.appendChild(popup);
     }
     function removeCards() {
+        log("Removing all cards");
         cardsContainer.querySelectorAll(".card").forEach(card => {
             card.remove();
         });
@@ -762,7 +715,7 @@ try {
         const card = document.createElement("div");
         card.classList.add("card");
         card.classList.add("grid");
-        card.id = game.gameID;
+        card.id = game.name;
 
         // Add star icon
         const star = document.createElement("span");
@@ -775,7 +728,7 @@ try {
 
         const bg = document.createElement("div");
         bg.classList.add("card-bg");
-        bg.style.backgroundImage = `url('https://${window.ccPorted.gameServer.server}/games/${game.gameID}${game.thumbPath}')`;
+        bg.style.backgroundImage = `url('${game.image}')`;
 
         const content = document.createElement("div");
         content.classList.add("card-content");
@@ -805,10 +758,12 @@ try {
 
         const links = document.createElement("div");
         links.classList.add("card-links");
-        const linkElement = document.createElement("a");
-        linkElement.href = `/play/?id=${game.gameID}&server=${window.ccPorted.gameServer.index}`;
-        linkElement.textContent = `Play ${game.fName} on CCPorted`;
-        links.appendChild(linkElement);
+        game.links.forEach(link => {
+            const linkElement = document.createElement("a");
+            linkElement.href = link.link;
+            linkElement.textContent = `${link.action ? link.action : "Play"} ${(link.pre) ? link.pre : game.fName} on ${link.name}`;
+            links.appendChild(linkElement);
+        });
 
         contentInner.appendChild(title);
         contentInner.appendChild(description);
@@ -877,36 +832,87 @@ try {
         removeCards();
         cardsArray.forEach(card => cardsContainer.appendChild(card));
     }
+    function loadAds(num = 3) {
+        log(`Loading ${num} ads`);
+        if (!window.adsEnabled) return;
+        if (!showingAds) {
+            log("Ads not shown, not loading");
+            needToLoadAds = true;
+            return;
+        };
+        needToLoadAds = false;
+        for (let i = 0; i < num; i++) {
+            const adHTML = `<div data-mndbanid="c5cf29fe-386b-45f3-a462-bc8326f5a713"></div>`;
+            const adCard = document.createElement("div");
+            adCard.classList.add("tad");
+            adCard.innerHTML = adHTML;
+            adCard.style.backgroundImage = `url('/assets/images/loading.gif')`;
+            adCard.style.backgroundSize = "fit";
+            adCard.style.backgroundRepeat = "no-repeat";
+            adCard.style.backgroundPosition = "center";
+
+            var randomCard = document.querySelector(".cards").children[Math.floor(Math.random() * document.querySelector(".cards").children.length)];
+            document.querySelector(".cards").insertBefore(adCard, randomCard);
+        }
+        const script = document.createElement("script");
+        script.src = "https://ss.mrmnd.com/banner.js";
+        document.body.appendChild(script);
+        script.onload = () => {
+            log("Ads loaded");
+        }
+    }
     function rerenderCards(layout) {
         document.querySelectorAll('.card').forEach(card => {
             card.classList.toggle('rows', layout === 'rows');
             card.classList.toggle('grid', layout === 'grid');
         });
-        rerenderAds(layout)
-    }
-    function rerenderAds(layout) {
-        // shuffle ads
-        const ads = document.querySelectorAll('.inxxx');
-        // remove all ads
-        ads.forEach(ad => ad.remove());
-        // load them again, in different order
-        for (let i = 0; i < ads.length; i++) {
-            const ad = ads[i];
-            const randomCard = document.querySelector('.cards').children[Math.floor(Math.random() * document.querySelector('.cards').children.length)];
-            document.querySelector('.cards').insertBefore(ad, randomCard);
-        }
-
-
     }
     toggleBtn.addEventListener('click', () => {
         const currentLayout = toggleBtn.getAttribute('data-current');
         const newLayout = currentLayout === 'grid' ? 'rows' : 'grid';
         toggleBtn.setAttribute('data-current', newLayout);
-        const cards = document.querySelector(".cards");
-        cards.classList.toggle('rows', newLayout === 'rows');
-        cards.classList.toggle('grid', newLayout === 'grid');
         rerenderCards(newLayout);
     });
+    // document.addEventListener("keydown", (e) => {
+        // if (e.key == "Escape" && window.gameRQPopupOpen) {
+            // closePopup();
+        // }
+        // if (e.key == "Enter" && window.gameRQPopupOpen) {
+            // document.getElementById("sendGameRequestButton").click();
+        // }
+    // });
+    // addGameRequestButton.addEventListener("click", () => {
+        // createAddGamePopup();
+        // const sendButton = document.getElementById("sendGameRequestButton");
+        // const nvmdButton = document.getElementById("nvmd");
+        // const popup = document.querySelector(".popup");
+
+        // popup.addEventListener("click", (e) => {
+            // if (e.target == popup) {
+                // closePopup();
+            // }
+        // });
+        // nvmdButton.addEventListener("click", () => {
+            // closePopup();
+        // });
+        // sendButton.addEventListener("click", async () => {
+            // const input = document.getElementById("gameRequestInput");
+            // try {
+
+                // if (input.value.toLowerCase().includes("roblox")) {
+                    // alert("20 game requests for roblox are submitted every day. Please no more. Thanks");
+                    // closePopup();
+                    // return;
+                // }
+                // await addGameRequest(input.value);
+            // } catch (e) {
+                // alert("An error occurred while sending your request. Please try again later.")
+                // log("error" + e);
+            // }
+            // closePopup();
+        // });
+
+    // });
     pickForMe.addEventListener("click", (e) => {
         var card = pickRandomCard();
         card.click();
@@ -920,6 +926,21 @@ try {
         input(sortState);
         setSort(sortState);
     });
+    // searchInput.addEventListener("click", (e) => {
+    //     // only clear if the click is on the "x" button
+    //     var rect = searchInput.getBoundingClientRect();
+    //     var x = rect.right - 10 - 15; // 10 is padding, 15 is the width of the "x" button
+    //     if (e.clientX > x) {
+    //         log("Clearing search input");
+    //         searchInput.value = "";
+    //         var url = new URL(window.location);
+    //         url.searchParams.delete("q");
+    //         window.history.pushState({}, '', url);
+    //         setSort(sortState)
+    //         searchInput.type = "hidden";
+    //     }
+
+    // });
     searchInput.addEventListener("mousemove", (e) => {
         // only set if the click is on the "x" button
         var rect = searchInput.getBoundingClientRect();

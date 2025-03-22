@@ -40,7 +40,7 @@ function createGameStorageSandbox(gameId = "ccported") {
                             return originalLocalStorage.getItem(`[ns_ccported]_${key}`);
                         }
                         // check game namespace
-                        if (originalLocalStorage.getItem(`${namespace}_${key}`)) {
+                        if(originalLocalStorage.getItem(`${namespace}_${key}`)){
                             return originalLocalStorage.getItem(`${namespace}_${key}`);
                         }
                         // check if it's already namespaced
@@ -57,7 +57,7 @@ function createGameStorageSandbox(gameId = "ccported") {
                             return originalLocalStorage.removeItem(`[ns_ccported]_${key}`);
                         }
                         // check game namespace
-                        if (originalLocalStorage.getItem(`${namespace}_${key}`)) {
+                        if(originalLocalStorage.getItem(`${namespace}_${key}`)){
                             return originalLocalStorage.removeItem(`${namespace}_${key}`);
                         }
                         // check if it's already namespaced
@@ -492,7 +492,7 @@ function createGameStorageSandbox(gameId = "ccported") {
         window.ccPorted.migrateDatabase = migrateDatabase;
     };
 }
-// createGameStorageSandbox(window.gameID || "ccported")();
+createGameStorageSandbox(window.gameID || "ccported")();
 
 class Stats {
     constructor() {
@@ -563,22 +563,12 @@ class Stats {
                 `;
             document.head.appendChild(style);
         });
-        if (this.interceptRequests) {
+        if(this.interceptRequests){
             this.log(`Request interception is on. set [ns_ccported]_statsConfig_interceptRequests in localStorage to a falsy value to turn off.`)
             this.setupRequestInterception();
-        } else {
-            this.log(`Request interception is off. set [ns_ccported]_statsConfig_interceptRequests in localStorage to a true value to turn on.`);
-            this.ensureRequestInterceptionOff();
+        }else{
+            this.log(`Request interception is off. set [ns_ccported]_statsConfig_interceptRequests in localStorage to a true value to turn on.`)
         }
-    }
-    ensureRequestInterceptionOff() {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-            for (const registration of registrations) {
-                if(registration.scope === window.location.origin + "/") {
-                    registration.unregister();
-                }
-            }
-        });
     }
     getPanel(panel = 0) {
         return this.dom.children[panel];
@@ -1061,7 +1051,7 @@ class Stats {
         const user = window.ccPorted.user;
         const game = window.gameID;
         const lastTrackingTick = lastUpdate;
-        const trackingData = window.ccPorted.trackingData || {};
+        const trackingData = window.ccPortedTrackingData || {};
         const lastAutoSync = window.ccPorted.stateSync?.lastSync || "N/A";
         const aspects = {
             time: `${new Date().toLocaleTimeString()} (${(
@@ -1072,7 +1062,7 @@ class Stats {
             requestInterceptionLoaded: this.workerLoaded,
             memory: memoryUsage,
             cpu: cpuUsage,
-            user: `${user ? user.id : "N/A"} (${user ? user["cognito:username"] : "Guest"
+            user: `${user ? user.id : "N/A"} (${user ? user.user_metadata.display_name : "Guest"
                 })`,
             game: game || "N/A",
             lastTrackingTick: `${lastTrackingTick} (${this.timeAgo(
@@ -1158,7 +1148,7 @@ function setupTracking() {
     updateTracking(
         `pages_visited.${treat(window.location.pathname)}.count`,
         (getDeepValue(
-            window.ccPorted.trackingData,
+            window.ccPortedTrackingData,
             `pages_visited.${treat(window.location.pathname)}.count`
         ) || 0) + 1
     );
@@ -1179,7 +1169,7 @@ function cleanupTracking() {
     }
 
     // Save final tracking update
-    if (window.ccPorted.trackingData) {
+    if (window.ccPortedTrackingData) {
         trackingTick();
     }
 }
@@ -1219,9 +1209,14 @@ function getDeepValue(obj, path) {
 // Update tracking data in database
 async function saveTrackingData() {
     try {
-        await window.ccPorted.updateUser({
-            'custom:tracking_data': JSON.stringify(window.ccPorted.trackingData)
-        })
+        const { error } = await window.ccSupaClient
+            .from("u_profiles")
+            .update({ tracking_data: window.ccPortedTrackingData })
+            .eq("id", window.ccPorted.user.id);
+
+        if (error) {
+            log("Error saving tracking data:", error);
+        }
     } catch (err) {
         log("Failed to save tracking data:", err);
     }
@@ -1229,14 +1224,14 @@ async function saveTrackingData() {
 
 // Function to update specific tracking attributes
 async function updateTracking(attrPath, value) {
-    if (!window.ccPorted.trackingData) {
-        window.ccPorted.trackingData = { games: {}, total_playtime: 0 };
+    if (!window.ccPortedTrackingData) {
+        window.ccPortedTrackingData = { games: {}, total_playtime: 0 };
     }
 
-    setDeepValue(window.ccPorted.trackingData, attrPath, value);
+    setDeepValue(window.ccPortedTrackingData, attrPath, value);
 }
 
-const tGameID = treat(window.gameID || window.ccPorted.gameID);
+const tGameID = treat(window.gameID);
 // Function to handle periodic tracking updates
 async function trackingTick() {
     const now = Date.now();
@@ -1248,13 +1243,13 @@ async function trackingTick() {
     const minutesElapsed =
         Math.round((minutesElapsedX + Number.EPSILON) * 100) / 100;
     if (minutesElapsed > 0 && tGameID) {
-        if (!window.ccPorted.trackingData.games[tGameID]) {
-            window.ccPorted.trackingData.games[tGameID] = { playtime: 0 };
+        if (!window.ccPortedTrackingData.games[tGameID]) {
+            window.ccPortedTrackingData.games[tGameID] = { playtime: 0 };
         }
 
         // Update game-specific playtime
         const currentPlaytime =
-            getDeepValue(window.ccPorted.trackingData, `games.${tGameID}.playtime`) ||
+            getDeepValue(window.ccPortedTrackingData, `games.${tGameID}.playtime`) ||
             0;
         updateTracking(
             `games.${tGameID}.playtime`,
@@ -1262,20 +1257,23 @@ async function trackingTick() {
         );
 
         // Update total playtime
-        const totalPlaytime = window.ccPorted.trackingData.total_playtime || 0;
+        const totalPlaytime = window.ccPortedTrackingData.total_playtime || 0;
         updateTracking("total_playtime", totalPlaytime + minutesElapsed);
     }
     await saveTrackingData();
 }
 async function handleUserLoggedIn() {
     // Fetch tracking data if user exists
-    if (!window.ccPorted.user) return;
-    if (window.ccPorted.user.attributes["custom:tracking_data"]) {
-        window.ccPorted.trackingData = JSON.parse(
-            window.ccPorted.user.attributes["custom:tracking_data"]
-        );
+    const { data, error } = await window.ccSupaClient
+        .from("u_profiles")
+        .select("tracking_data")
+        .eq("id", window.ccPorted.user.id)
+        .single();
+    if (error) log("Error fetching tracking data:", error);
+    if (data && data.tracking_data) {
+        window.ccPortedTrackingData = data.tracking_data;
     } else {
-        window.ccPorted.trackingData = {
+        window.ccPortedTrackingData = {
             games: {},
             total_playtime: 0,
             chat_messages_sent: 0,
@@ -1283,24 +1281,20 @@ async function handleUserLoggedIn() {
         };
     }
     setupTracking();
-    if (typeof window.ccPorted?.config?.stateSyncEnabled == "undefined" || window.ccPorted?.config?.stateSyncEnabled) {
-        window.ccPorted.stateSync = new GameStateSync(
-            window.ccPorted.user.id,
-        );
-    }
+    window.ccPorted.stateSync = new GameStateSync(
+        window.ccPorted.user.id,
+        window.ccSupaClient
+    );
+    window.ccPorted.stateSync.initialize();
 }
 async function init() {
     if (window.ccPorted.user) {
         handleUserLoggedIn();
     } else if (window.ccPorted.userPromise) {
-        try {
-            const user = await window.ccPorted.userPromise;
-            if (user) {
-                window.ccPorted.user = user;
-                handleUserLoggedIn();
-            }
-        } catch (e) {
-            log("User appears to be logged out");
+        const user = await window.ccPorted.userPromise;
+        if (user) {
+            window.ccPorted.user = user;
+            handleUserLoggedIn();
         }
     }
 }
